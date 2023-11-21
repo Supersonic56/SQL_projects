@@ -209,3 +209,96 @@ MAX(Number_Of_Copies) - MIN(Number_Of_Copies) AS range,
 MAX(Number_Of_Copies)%11 AS modulo
 FROM BOOK_COPIES;
 
+--added date functions
+SELECT
+UPPER (NAME),
+DATEDIFF(D, DateDue, GETDATE()) AS days_due
+from BOOK_LOANS
+LEFT JOIN BORROWER ON BOOK_LOANS.CardNo = BORROWER.CardNo;
+
+--added concatenation
+SELECT 
+Name, Title, DateOut,
+Name + ' ' + 'borrowed' + ' ' + Title + 'on ' + CAST(DateOut as varchar(12))
+FROM BORROWER
+INNER JOIN BOOK_LOANS ON BORROWER.CardNo = BOOK_LOANS.CardNo
+INNER JOIN BOOKS ON BOOK_LOANS.BookID = BOOKS.BookID;
+
+--added concatenation, second method
+SELECT 
+Name, Title, DateOut,
+Name + ' ' + 'borrowed' + ' ' + Title + 'on ' + CONVERT(varchar(12), DateOut)
+FROM BORROWER
+INNER JOIN BOOK_LOANS ON BORROWER.CardNo = BOOK_LOANS.CardNo
+INNER JOIN BOOKS ON BOOK_LOANS.BookID = BOOKS.BookID;
+
+--added date conversion and date formating
+SELECT
+BookID, 
+CONVERT(char(8),DateDue, 3), --3 is for date format, here it is for The UK data format
+DATENAME(DW, DateDue) + ' ' + 
+DATENAME(DD, DateDue) + ' ' + 
+DATENAME(MM, DateDue) + ' ' + 
+DATENAME(YY, DateDue)
+FROM BOOK_LOANS;
+
+-- calculated time passed
+SELECT DateOut, DateDue,
+DATEDIFF(DD, DateDue, GETDATE()) AS days_overdue
+FROM BOOK_LOANS;
+
+SELECT DateOut, DateDue,
+	DATEDIFF(DD, DateOut, DateDue) as days_out, 
+	DATEDIFF(DD, DateDue, GETDATE()) AS days_overdue,
+	DATEDIFF(YY, DateDue, GETDATE()) AS  years_overdue,
+	DATEDIFF(DD, DateDue, GETDATE())%365 AS  plus_days,
+	DATEADD(YY, DATEDIFF(YY, DateDue, GETDATE()), DateDue),
+	CASE	
+		WHEN DATEADD(YY, DATEDIFF(YY, DateDue, GETDATE()), DateDue)
+		> GETDATE()
+		THEN DATEDIFF(YY, DateDue, GETDATE()) - 1
+		ELSE DATEDIFF(YY, DateDue, GETDATE()) 
+	END AS full_years
+FROM BOOK_LOANS;
+ 
+--data type conversion
+SELECT 
+	SUM(CONVERT(BIGINT, Number_Of_Copies)),
+	AVG(CONVERT(DECIMAL, Number_Of_Copies))
+FROM
+	BOOK_COPIES;
+
+--using group by and having clause with aggregate functions 
+
+SELECT
+	LEN(PublisherID) AS publisher_len,
+	AVG(Number_Of_Copies) AS avg_nr_copy
+FROM BOOK_COPIES
+FULL OUTER JOIN BOOKS ON BOOK_COPIES.BookID = Books.BookID
+GROUP BY LEN(PublisherID)
+HAVING AVG(Number_Of_Copies) > 0
+ORDER BY LEN(PublisherID) ASC
+;
+
+--aggregate functions in a subquery
+SELECT DateOut
+FROM BOOK_LOANS
+WHERE
+	DateDue =
+(SELECT
+	MAX(DateDue)
+FROM BOOK_LOANS)
+;
+
+
+SELECT DateOut,
+	(SELECT
+			MAX(DateDue)
+		FROM 
+			BOOK_LOANS) AS [max_due_date]
+FROM BOOK_LOANS
+WHERE
+	DateDue <=
+	(SELECT 
+		MAX(DateDue)
+	FROM BOOK_LOANS)
